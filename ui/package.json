@@ -11,7 +11,7 @@
     "@material-ui/icons": "^5.0.0-alpha.35",
     "@material-ui/lab": "^5.0.0-alpha.35",
     "@material-ui/styles": "^5.0.0-alpha.35",
-    "@nivo/core": "^0.68.0",
+    "@nivo/core": "^0.74.0",
     "@nivo/pie": "^0.68.0",
     "@reduxjs/toolkit": "^1.5.0",
     "ace-builds": "^1.4.12",
