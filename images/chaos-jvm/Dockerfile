@@ -18,7 +18,7 @@ WORKDIR /opt/sandbox/chaosblade-exec-jvm-0.9.0
 
 RUN make
 
-FROM alpine:3.12
+FROM alpine:3.14
 
 WORKDIR /bin
 
