@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: chaos-mesh
+  title: chaos-mesh # optional, human readable component name
+  description: the chaos-mesh.
+  annotations:
+    github.com/project-slug: eyinwag/chaos-mesh
+spec:
+  type: service
+  owner: user:eyinwag
+  lifecycle: experimental
