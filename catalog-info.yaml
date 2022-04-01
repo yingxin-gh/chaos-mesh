@@ -6,6 +6,8 @@ metadata:
   description: the chaos-mesh.
   annotations:
     github.com/project-slug: eyinwag/chaos-mesh
+    backstage.io/techdocs-ref: dir:.
+    
 spec:
   type: service
   owner: user:eyinwag
