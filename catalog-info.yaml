@@ -7,7 +7,7 @@ metadata:
   annotations:
     github.com/project-slug: eyinwag/chaos-mesh
     backstage.io/techdocs-ref: dir:.
-    
+    backstage.io/kubernetes-id: tu023
 spec:
   type: service
   owner: user:eyinwag
