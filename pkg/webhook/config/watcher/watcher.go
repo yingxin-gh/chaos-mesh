@@ -18,26 +18,22 @@ package watcher
 import (
 	"context"
 	"html/template"
-	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/ghodss/yaml"
-
-	"github.com/chaos-mesh/chaos-mesh/pkg/metrics"
-	"github.com/chaos-mesh/chaos-mesh/pkg/webhook/config"
-
-	ctrl "sigs.k8s.io/controller-runtime"
-
+	"github.com/pkg/errors"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	k8sv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/chaos-mesh/chaos-mesh/pkg/metrics"
+	"github.com/chaos-mesh/chaos-mesh/pkg/webhook/config"
 )
 
 var log = ctrl.Log.WithName("inject-webhook")
@@ -65,7 +61,7 @@ func New(cfg Config, metrics *metrics.ChaosControllerManagerMetricsCollector) (*
 	if strings.TrimSpace(c.TemplateNamespace) == "" {
 		// ENHANCEMENT: support downward API/env vars instead? https://github.com/kubernetes/kubernetes/blob/release-1.0/docs/user-guide/downward-api.md
 		// load from file on disk for serviceaccount: /var/run/secrets/kubernetes.io/serviceaccount/namespace
-		nsBytes, err := ioutil.ReadFile(serviceAccountNamespaceFilePath)
+		nsBytes, err := os.ReadFile(serviceAccountNamespaceFilePath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil, errors.Wrapf(err, "service account namespace file %s does not exist", serviceAccountNamespaceFilePath)

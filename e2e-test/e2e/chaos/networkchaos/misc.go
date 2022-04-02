@@ -18,18 +18,17 @@ package networkchaos
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
-
-	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 )
@@ -47,7 +46,7 @@ func recvUDPPacket(c http.Client, port uint16) (string, error) {
 		return "", err
 	}
 
-	out, err := ioutil.ReadAll(resp.Body)
+	out, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
 		return "", err
@@ -66,7 +65,7 @@ func sendUDPPacket(c http.Client, port uint16, targetIP string) error {
 		return err
 	}
 
-	out, err := ioutil.ReadAll(resp.Body)
+	out, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
 		return err
@@ -90,7 +89,7 @@ func testNetworkDelay(c http.Client, port uint16, targetIP string) (int64, error
 		return 0, err
 	}
 
-	out, err := ioutil.ReadAll(resp.Body)
+	out, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
 		return 0, err

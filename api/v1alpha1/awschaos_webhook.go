@@ -18,11 +18,10 @@ package v1alpha1
 import (
 	"reflect"
 
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/pkg/errors"
-
-	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1/genericwebhook"
+	"github.com/chaos-mesh/chaos-mesh/api/genericwebhook"
 )
 
 type EbsVolume string
@@ -56,7 +55,7 @@ func (in *AWSDeviceName) Validate(root interface{}, path *field.Path) field.Erro
 	return allErrs
 }
 
-// ValidateScheduler validates the scheduler and duration
+// Validate validates aws chaos actions
 func (in *AWSChaosAction) Validate(root interface{}, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 

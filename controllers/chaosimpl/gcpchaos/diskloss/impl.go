@@ -19,9 +19,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/pkg/errors"
-
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	compute "google.golang.org/api/compute/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -50,8 +49,14 @@ func (impl *Impl) Apply(ctx context.Context, index int, records []*v1alpha1.Reco
 		impl.Log.Error(err, "fail to get the compute service")
 		return v1alpha1.NotInjected, err
 	}
+
 	var selected v1alpha1.GCPSelector
-	json.Unmarshal([]byte(records[index].Id), &selected)
+	err = json.Unmarshal([]byte(records[index].Id), &selected)
+	if err != nil {
+		impl.Log.Error(err, "fail to unmarshal the selector")
+		return v1alpha1.NotInjected, err
+	}
+
 	instance, err := computeService.Instances.Get(selected.Project, selected.Zone, selected.Instance).Do()
 	if err != nil {
 		impl.Log.Error(err, "fail to get the instance")
@@ -115,7 +120,12 @@ func (impl *Impl) Recover(ctx context.Context, index int, records []*v1alpha1.Re
 	}
 	var disk compute.AttachedDisk
 	var selected v1alpha1.GCPSelector
-	json.Unmarshal([]byte(records[index].Id), &selected)
+	err = json.Unmarshal([]byte(records[index].Id), &selected)
+	if err != nil {
+		impl.Log.Error(err, "fail to unmarshal the selector")
+		return v1alpha1.NotInjected, err
+	}
+
 	for _, attachedDiskString := range gcpchaos.Status.AttachedDisksStrings {
 		err = json.Unmarshal([]byte(attachedDiskString), &disk)
 		if err != nil {

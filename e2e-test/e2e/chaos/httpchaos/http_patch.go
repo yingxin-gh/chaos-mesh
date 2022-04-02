@@ -17,7 +17,7 @@ package httpchaos
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"strings"
 	"time"
 
@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -59,7 +59,7 @@ func TestcaseHttpPatchThenRecover(
 		defer resp.Body.Close()
 
 		s := strings.Join(resp.Header[SECRET], "; ")
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
@@ -123,7 +123,7 @@ func TestcaseHttpPatchThenRecover(
 		defer resp.Body.Close()
 
 		s := strings.Join(resp.Header[SECRET], "; ")
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
@@ -152,7 +152,7 @@ func TestcaseHttpPatchThenRecover(
 		defer resp.Body.Close()
 
 		s := strings.Join(resp.Header[SECRET], "; ")
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
@@ -192,7 +192,7 @@ func TestcaseHttpPatchPauseAndUnPause(
 		defer resp.Body.Close()
 
 		s := strings.Join(resp.Header[SECRET], "; ")
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
@@ -276,7 +276,7 @@ func TestcaseHttpPatchPauseAndUnPause(
 		defer resp.Body.Close()
 
 		s := strings.Join(resp.Header[SECRET], "; ")
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
@@ -326,7 +326,7 @@ func TestcaseHttpPatchPauseAndUnPause(
 		defer resp.Body.Close()
 
 		s := strings.Join(resp.Header[SECRET], "; ")
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}
@@ -375,7 +375,7 @@ func TestcaseHttpPatchPauseAndUnPause(
 		defer resp.Body.Close()
 
 		s := strings.Join(resp.Header[SECRET], "; ")
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, err
 		}

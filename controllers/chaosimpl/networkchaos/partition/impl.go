@@ -19,9 +19,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	k8sError "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -361,12 +360,19 @@ func (impl *Impl) SetDrop(ctx context.Context, m *podnetworkchaosmanager.PodNetw
 		}
 		targetPods = append(targetPods, pod)
 	}
-	dstIpset := ipset.BuildIPSet(targetPods, externalCidrs, networkchaos, ipSetPostFix, m.Source)
-	m.T.Append(dstIpset)
+	dstIPSets := ipset.BuildIPSets(targetPods, externalCidrs, networkchaos, ipSetPostFix, m.Source)
+	dstSetIPSet := ipset.BuildSetIPSet(dstIPSets, networkchaos, ipSetPostFix, m.Source)
+
+	for _, ipSet := range dstIPSets {
+		m.T.Append(ipSet)
+	}
+
+	m.T.Append(dstSetIPSet)
+
 	m.T.Append(v1alpha1.RawIptables{
 		Name:      iptable.GenerateName(pbChainDirection, networkchaos),
 		Direction: chainDirection,
-		IPSets:    []string{dstIpset.Name},
+		IPSets:    []string{dstSetIPSet.Name},
 		RawRuleSource: v1alpha1.RawRuleSource{
 			Source: m.Source,
 		},

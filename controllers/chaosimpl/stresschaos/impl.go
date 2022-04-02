@@ -19,9 +19,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"go.uber.org/fx"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,7 +42,7 @@ type Impl struct {
 }
 
 func (impl *Impl) Apply(ctx context.Context, index int, records []*v1alpha1.Record, obj v1alpha1.InnerObject) (v1alpha1.Phase, error) {
-	decodedContainer, err := impl.decoder.DecodeContainerRecord(ctx, records[index])
+	decodedContainer, err := impl.decoder.DecodeContainerRecord(ctx, records[index], obj)
 	pbClient := decodedContainer.PbClient
 	containerId := decodedContainer.ContainerId
 	if pbClient != nil {
@@ -64,29 +63,41 @@ func (impl *Impl) Apply(ctx context.Context, index int, records []*v1alpha1.Reco
 	}
 
 	stressors := stresschaos.Spec.StressngStressors
+	cpuStressors := ""
+	memoryStressors := ""
 	if len(stressors) == 0 {
-		stressors, err = stresschaos.Spec.Stressors.Normalize()
+		cpuStressors, memoryStressors, err = stresschaos.Spec.Stressors.Normalize()
 		if err != nil {
 			impl.Log.Info("fail to ")
 			// TODO: add an event here
 			return v1alpha1.NotInjected, err
 		}
 	}
-	res, err := pbClient.ExecStressors(ctx, &pb.ExecStressRequest{
-		Scope:     pb.ExecStressRequest_CONTAINER,
-		Target:    containerId,
-		Stressors: stressors,
-		EnterNS:   true,
-	})
+
+	req := pb.ExecStressRequest{
+		Scope:           pb.ExecStressRequest_CONTAINER,
+		Target:          containerId,
+		CpuStressors:    cpuStressors,
+		MemoryStressors: memoryStressors,
+		EnterNS:         true,
+	}
+	if stresschaos.Spec.Stressors.MemoryStressor != nil {
+		req.OomScoreAdj = int32(stresschaos.Spec.Stressors.MemoryStressor.OOMScoreAdj)
+	}
+	res, err := pbClient.ExecStressors(ctx, &req)
+
 	if err != nil {
 		return v1alpha1.NotInjected, err
 	}
-
 	// TODO: support custom status
 	stresschaos.Status.Instances[records[index].Id] = v1alpha1.StressInstance{
-		UID: res.Instance,
+		UID: res.CpuInstance,
 		StartTime: &metav1.Time{
-			Time: time.Unix(res.StartTime/1000, (res.StartTime%1000)*int64(time.Millisecond)),
+			Time: time.Unix(res.CpuStartTime/1000, (res.CpuStartTime%1000)*int64(time.Millisecond)),
+		},
+		MemoryUID: res.MemoryInstance,
+		MemoryStartTime: &metav1.Time{
+			Time: time.Unix(res.MemoryStartTime/1000, (res.MemoryStartTime%1000)*int64(time.Millisecond)),
 		},
 	}
 
@@ -94,7 +105,7 @@ func (impl *Impl) Apply(ctx context.Context, index int, records []*v1alpha1.Reco
 }
 
 func (impl *Impl) Recover(ctx context.Context, index int, records []*v1alpha1.Record, obj v1alpha1.InnerObject) (v1alpha1.Phase, error) {
-	decodedContainer, err := impl.decoder.DecodeContainerRecord(ctx, records[index])
+	decodedContainer, err := impl.decoder.DecodeContainerRecord(ctx, records[index], obj)
 	pbClient := decodedContainer.PbClient
 	if pbClient != nil {
 		defer pbClient.Close()
@@ -117,10 +128,12 @@ func (impl *Impl) Recover(ctx context.Context, index int, records []*v1alpha1.Re
 		return v1alpha1.NotInjected, nil
 	}
 	if _, err = pbClient.CancelStressors(ctx, &pb.CancelStressRequest{
-		Instance:  instance.UID,
-		StartTime: instance.StartTime.UnixNano() / int64(time.Millisecond),
+		CpuInstance:     instance.UID,
+		CpuStartTime:    instance.StartTime.UnixNano() / int64(time.Millisecond),
+		MemoryInstance:  instance.MemoryUID,
+		MemoryStartTime: instance.MemoryStartTime.UnixNano() / int64(time.Millisecond),
 	}); err != nil {
-		// TODO: check whether the erorr still exists
+		impl.Log.Error(err, "cancel stressors")
 		return v1alpha1.Injected, nil
 	}
 	delete(stresschaos.Status.Instances, records[index].Id)

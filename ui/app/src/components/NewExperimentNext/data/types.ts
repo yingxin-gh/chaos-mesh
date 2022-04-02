@@ -19,7 +19,7 @@ import * as Yup from 'yup'
 
 import { ExperimentKind } from 'components/NewExperiment/types'
 
-export type Kind = Exclude<ExperimentKind, 'PhysicalMachineChaos'>
+export type Kind = Exclude<ExperimentKind, 'PhysicalMachineChaos' | 'AzureChaos'>
 export type KindPhysic =
   | Extract<Kind, 'NetworkChaos' | 'StressChaos' | 'TimeChaos'>
   | 'DiskChaos'
@@ -65,6 +65,22 @@ const awsCommon: Spec = {
     label: 'EC2 instance',
     value: '',
     helperText: 'The ID of a EC2 instance',
+  },
+}
+
+const blockCommon: Spec = {
+  containerNames: {
+    field: 'label',
+    label: 'Affected container names',
+    value: [],
+    helperText:
+      "Optional. Type string and end with a TAB to generate the container names. If it's empty, the first container will be injected",
+  },
+  volumeName: {
+    field: 'text',
+    label: 'Volume name',
+    value: '',
+    helperText: 'The name of the volume',
   },
 }
 
@@ -323,6 +339,50 @@ const data: Record<Kind, Definition> = {
             value: '',
             helperText: 'The ID of a EBS volume',
           },
+        },
+      },
+    ],
+  },
+  BlockChaos: {
+    categories: [
+      {
+        name: 'Delay',
+        key: 'delay',
+        spec: {
+          action: 'delay' as any,
+          latency: {
+            field: 'text',
+            label: 'Latency',
+            value: '',
+            helperText: 'The latency of delay',
+          },
+          jitter: {
+            field: 'text',
+            label: 'Jitter',
+            value: '',
+            helperText: 'The jitter of delay',
+          },
+          correlation: {
+            field: 'text',
+            label: 'Correlation',
+            value: '',
+            helperText: 'The correlation of delay',
+          },
+          ...blockCommon,
+        },
+      },
+      {
+        name: 'Limit',
+        key: 'limit',
+        spec: {
+          action: 'limit' as any,
+          iops: {
+            field: 'number',
+            label: 'IOPS',
+            value: 0,
+            helperText: 'The maximum IOPS',
+          },
+          ...blockCommon,
         },
       },
     ],
@@ -1253,6 +1313,12 @@ export const dataPhysic: Record<KindPhysic, Definition> = {
         label: 'Signal',
         value: 9,
         helperText: 'The process signal value',
+      },
+      recoverCmd: {
+        field: 'text',
+        label: 'Recover Command',
+        value: '',
+        helperText: 'The command to be run when recovering experiment',
       },
     },
   },

@@ -49,16 +49,22 @@ header:
     # Dockerfiles
     - '**/Dockerfile'
     # UI
-    - 'ui/.husky/pre-commit'
-    - 'ui/.husky/_/husky.sh'
+    - 'ui/.husky/**'
     - 'ui/.prettierignore'
     - 'ui/.prettierrc'
     - 'ui/.yarnclean'
     - 'ui/app/src/api/zz_generated.frontend.chaos-mesh.ts'
+    - 'ui/app/src/formik/**'
+    - 'ui/app/src/openapi/**'
     - 'ui/app/src/setupProxy.js'
     - 'ui/**/*.svg'
-    - 'ui/node_modules'
-    - 'ui/app/node_modules'
-    - 'ui/packages/mui-extends/node_modules'
+    - '**/node_modules/**'
+    - 'ui/app/build/**/*'
+    - 'ui/packages/mui-extends/esm/**/*'
+    - 'ui/packages/mui-extends/.storybook/**'
+    - 'ui/packages/mui-extends/stories/**'
+    - 'ui/packages/mui-extends/__mocks__/**'
+    - 'ui/packages/mui-extends/test/storyshots.test.js'
+    - 'ui/packages/mui-extends/test/__snapshots__/storyshots.test.js.snap'
     # codecov configuration file
     - codecov.yml

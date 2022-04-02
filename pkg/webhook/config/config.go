@@ -17,12 +17,10 @@ package config
 
 import (
 	"io"
-	"io/ioutil"
 	"sync"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
@@ -127,7 +125,7 @@ func (c *Config) GetRequestedConfig(namespace, key string) (*InjectionConfig, er
 
 // LoadTemplateArgs takes an io.Reader and parses out an template args
 func LoadTemplateArgs(reader io.Reader) (*TemplateArgs, error) {
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}

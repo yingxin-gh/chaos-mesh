@@ -1,28 +1,32 @@
 # Set DEBUGGER=1 to build debug symbols
 export LDFLAGS := $(if $(LDFLAGS),$(LDFLAGS),$(if $(DEBUGGER),,-s -w) $(shell ./hack/version.sh))
-export IMAGE_REGISTRY ?= localhost:5000
+export IMAGE_REGISTRY ?= ghcr.io
 
 # SET IMAGE_REGISTRY to change the docker registry
 IMAGE_REGISTRY_PREFIX := $(if $(IMAGE_REGISTRY),$(IMAGE_REGISTRY)/,)
 
 export IMAGE_TAG ?= latest
-export IMAGE_PROJECT ?= pingcap
+export IMAGE_PROJECT ?= chaos-mesh
 export IMAGE_BUILD ?= 1
 
-export IMAGE_CHAOS_MESH_PROJECT ?= chaos-mesh
-export IMAGE_CHAOS_DAEMON_PROJECT ?= chaos-mesh
-export IMAGE_CHAOS_DASHBOARD_PROJECT ?= chaos-mesh
+# todo: rename the project/repository of e2e-helper to chaos-mesh
+export IMAGE_E2E_HELPER_PROJECT ?= pingcap
+export IMAGE_CHAOS_MESH_E2E_PROJECT ?= pingcap
 
 ROOT=$(shell pwd)
 HELM_BIN=$(ROOT)/output/bin/helm
 
-# Every branch should have its own image tag for build-env and dev-env
-export IMAGE_BUILD_ENV_PROJECT ?= chaos-mesh
-export IMAGE_BUILD_ENV_REGISTRY ?= ghcr.io
 export IMAGE_BUILD_ENV_BUILD ?= 0
-export IMAGE_DEV_ENV_PROJECT ?= chaos-mesh
-export IMAGE_DEV_ENV_REGISTRY ?= ghcr.io
 export IMAGE_DEV_ENV_BUILD ?= 0
+
+# Every branch should have its own image tag for build-env and dev-env
+# using := with ifeq instead of ?= for performance issue
+ifeq ($(IMAGE_BUILD_ENV_TAG),)
+IMAGE_BUILD_ENV_TAG := $(shell ./hack/env-image-tag.sh build-env)
+endif
+ifeq ($(IMAGE_DEV_ENV_TAG),)
+IMAGE_DEV_ENV_TAG := $(shell ./hack/env-image-tag.sh dev-env)
+endif
 
 export GOPROXY  := $(if $(GOPROXY),$(GOPROXY),https://proxy.golang.org,direct)
 GOENV  	:= CGO_ENABLED=0
@@ -32,12 +36,13 @@ CGO    	:= $(CGOENV) go
 GOTEST 	:= USE_EXISTING_CLUSTER=false NO_PROXY="${NO_PROXY},testhost" go test
 SHELL  	:= bash
 
-PACKAGE_LIST := echo $$(go list ./... | grep -vE "chaos-mesh/test|pkg/ptrace|zz_generated|vendor") github.com/chaos-mesh/chaos-mesh/api/v1alpha1
+PACKAGE_LIST := echo $$(go list ./... | grep -vE "chaos-mesh/test|pkg/ptrace|zz_generated|vendor") $(cd api && go list ./... && cd ../)
 
 # no version conversion
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false,crdVersions=v1"
 
 export GO_BUILD_CACHE ?= $(ROOT)/.cache/chaos-mesh
+export YARN_BUILD_CACHE ?= $(ROOT)/.cache/yarn
 
 BUILD_TAGS ?=
 
@@ -51,7 +56,7 @@ BASIC_IMAGE_ENV=IMAGE_DEV_ENV_PROJECT=$(IMAGE_DEV_ENV_PROJECT) IMAGE_DEV_ENV_REG
 	IMAGE_BUILD_ENV_TAG=$(IMAGE_BUILD_ENV_TAG) IN_DOCKER=$(IN_DOCKER) \
 	IMAGE_TAG=$(IMAGE_TAG) IMAGE_PROJECT=$(IMAGE_PROJECT) IMAGE_REGISTRY=$(IMAGE_REGISTRY) \
 	TARGET_PLATFORM=$(TARGET_PLATFORM) \
-	GO_BUILD_CACHE=$(GO_BUILD_CACHE)
+	GO_BUILD_CACHE=$(GO_BUILD_CACHE) YARN_BUILD_CACHE=$(YARN_BUILD_CACHE)
 
 RUN_IN_DEV_SHELL=$(shell $(BASIC_IMAGE_ENV)\
 	$(ROOT)/build/get_env_shell.py dev-env)
@@ -62,7 +67,7 @@ CLEAN_TARGETS :=
 
 all: yaml image
 
-test-utils: timer multithread_tracee pkg/time/fakeclock/fake_clock_gettime.o
+test-utils: timer multithread_tracee pkg/time/fakeclock/fake_clock_gettime.o pkg/time/fakeclock/fake_gettimeofday.o
 
 timer:
 	$(GO) build -ldflags '$(LDFLAGS)' -o bin/test/timer ./test/cmd/timer/*.go
@@ -83,7 +88,7 @@ ifeq (${UI},1)
 	hack/embed_ui_assets.sh
 endif
 
-watchmaker: pkg/time/fakeclock/fake_clock_gettime.o
+watchmaker: pkg/time/fakeclock/fake_clock_gettime.o pkg/time/fakeclock/fake_gettimeofday.o
 	$(CGO) build -ldflags '$(LDFLAGS)' -o bin/watchmaker ./cmd/watchmaker/...
 
 # Build chaosctl
@@ -151,14 +156,17 @@ enter-devenv: images/dev-env/.dockerbuilt
 	@bash
 
 images/chaos-daemon/bin/pause: SHELL:=$(RUN_IN_BUILD_SHELL)
-images/chaos-daemon/bin/pause: hack/pause.c images/dev-env/.dockerbuilt
+images/chaos-daemon/bin/pause: hack/pause.c images/build-env/.dockerbuilt
 	cc ./hack/pause.c -o images/chaos-daemon/bin/pause
 
 pkg/time/fakeclock/fake_clock_gettime.o: SHELL:=$(RUN_IN_BUILD_SHELL)
-pkg/time/fakeclock/fake_clock_gettime.o: pkg/time/fakeclock/fake_clock_gettime.c images/dev-env/.dockerbuilt
+pkg/time/fakeclock/fake_clock_gettime.o: pkg/time/fakeclock/fake_clock_gettime.c images/build-env/.dockerbuilt
 	cc -c ./pkg/time/fakeclock/fake_clock_gettime.c -fPIE -O2 -o pkg/time/fakeclock/fake_clock_gettime.o
+pkg/time/fakeclock/fake_gettimeofday.o: SHELL:=$(RUN_IN_BUILD_SHELL)
+pkg/time/fakeclock/fake_gettimeofday.o: pkg/time/fakeclock/fake_gettimeofday.c images/build-env/.dockerbuilt
+	cc -c ./pkg/time/fakeclock/fake_gettimeofday.c -fPIE -O2 -o pkg/time/fakeclock/fake_gettimeofday.o
 
-$(eval $(call COMPILE_GO_TEMPLATE,images/chaos-daemon/bin/chaos-daemon,./cmd/chaos-daemon/main.go,1,pkg/time/fakeclock/fake_clock_gettime.o))
+$(eval $(call COMPILE_GO_TEMPLATE,images/chaos-daemon/bin/chaos-daemon,./cmd/chaos-daemon/main.go,1,pkg/time/fakeclock/fake_clock_gettime.o pkg/time/fakeclock/fake_gettimeofday.o))
 $(eval $(call COMPILE_GO_TEMPLATE,images/chaos-dashboard/bin/chaos-dashboard,./cmd/chaos-dashboard/main.go,1,ui))
 $(eval $(call COMPILE_GO_TEMPLATE,images/chaos-mesh/bin/chaos-controller-manager,./cmd/chaos-controller-manager/main.go,0))
 
@@ -226,7 +234,7 @@ docker-push-chaos-kernel:
 	docker push "${IMAGE_REGISTRY_PREFIX}pingcap/chaos-kernel:${IMAGE_TAG}"
 
 bin/chaos-builder: SHELL:=$(RUN_IN_DEV_SHELL)
-bin/chaos-builder: images/dev-env/.dockerbuilt 
+bin/chaos-builder: images/dev-env/.dockerbuilt
 	$(CGOENV) go build -ldflags '$(LDFLAGS)' -o bin/chaos-builder ./cmd/chaos-builder/...
 
 chaos-build: SHELL:=$(RUN_IN_DEV_SHELL)
@@ -247,17 +255,17 @@ manifests/crd-v1beta1.yaml: SHELL:=$(RUN_IN_DEV_SHELL)
 manifests/crd-v1beta1.yaml: config images/dev-env/.dockerbuilt
 	mkdir -p ./output
 	cp -Tr ./config ./output/config-v1beta1
-	cd ./api/v1alpha1 ;\
-		controller-gen "crd:trivialVersions=true,preserveUnknownFields=false,crdVersions=v1beta1" rbac:roleName=manager-role paths="./..." output:crd:artifacts:config=../../output/config-v1beta1/crd/bases ;
+	cd ./api ;\
+		controller-gen "crd:trivialVersions=true,preserveUnknownFields=false,crdVersions=v1beta1" rbac:roleName=manager-role paths="./..." output:crd:artifacts:config=../output/config-v1beta1/crd/bases ;
 	kustomize build output/config-v1beta1/default > manifests/crd-v1beta1.yaml
 
 yaml: manifests/crd.yaml manifests/crd-v1beta1.yaml
 
 config: SHELL:=$(RUN_IN_DEV_SHELL)
 config: images/dev-env/.dockerbuilt
-	cd ./api/v1alpha1 ;\
-		controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role paths="./..." output:crd:artifacts:config=../../config/crd/bases ;\
-		controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role paths="./..." output:crd:artifacts:config=../../helm/chaos-mesh/crds ;
+	cd ./api ;\
+		controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role paths="./..." output:crd:artifacts:config=../config/crd/bases ;\
+		controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role paths="./..." output:crd:artifacts:config=../helm/chaos-mesh/crds ;
 
 lint: SHELL:=$(RUN_IN_DEV_SHELL)
 lint: images/dev-env/.dockerbuilt
@@ -274,7 +282,7 @@ failpoint-disable: images/dev-env/.dockerbuilt
 groupimports: SHELL:=$(RUN_IN_DEV_SHELL)
 groupimports: images/dev-env/.dockerbuilt
 	find . -type f -name '*.go' -not -path '**/zz_generated.*.go' -not -path './.cache/**' | xargs \
-		-d $$'\n' -n 10 goimports -w -l -local github.com/chaos-mesh/chaos-mesh
+		-d $$'\n' -n 10 goimports -combine -w -l -local github.com/chaos-mesh/chaos-mesh
 
 fmt: SHELL:=$(RUN_IN_DEV_SHELL)
 fmt: groupimports images/dev-env/.dockerbuilt
@@ -289,18 +297,18 @@ tidy: images/dev-env/.dockerbuilt
 	@echo "go mod tidy"
 	GO111MODULE=on go mod tidy
 	git diff -U --exit-code go.mod go.sum
-	cd api/v1alpha1; GO111MODULE=on go mod tidy; git diff -U --exit-code go.mod go.sum
+	cd api; GO111MODULE=on go mod tidy; git diff -U --exit-code go.mod go.sum
 	cd e2e-test; GO111MODULE=on go mod tidy; git diff -U --exit-code go.mod go.sum
 	cd e2e-test/cmd/e2e_helper; GO111MODULE=on go mod tidy; git diff -U --exit-code go.mod go.sum
 
 generate-ctrl: SHELL:=$(RUN_IN_DEV_SHELL)
 generate-ctrl: images/dev-env/.dockerbuilt generate-deepcopy
-	$(GO) generate ./pkg/ctrlserver/graph
+	$(GO) generate ./pkg/ctrl/server
 
 generate-deepcopy: SHELL:=$(RUN_IN_DEV_SHELL)
 generate-deepcopy: images/dev-env/.dockerbuilt chaos-build
-	cd ./api/v1alpha1 ;\
-		controller-gen object:headerFile=../../hack/boilerplate/boilerplate.generatego.txt paths="./..." ;
+	cd ./api ;\
+		controller-gen object:headerFile=../hack/boilerplate/boilerplate.generatego.txt paths="./..." ;
 
 generate: generate-ctrl swagger_spec generate-deepcopy chaos-build
 
