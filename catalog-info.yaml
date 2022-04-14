@@ -10,5 +10,5 @@ metadata:
     backstage.io/kubernetes-id: tu023
 spec:
   type: service
-  owner: user:eyinwag
+  owner: user:yingxin-gh
   lifecycle: experimental
