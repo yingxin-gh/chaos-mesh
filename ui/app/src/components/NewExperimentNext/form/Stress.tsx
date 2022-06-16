@@ -18,7 +18,7 @@ import { Form, Formik, getIn } from 'formik'
 import { LabelField, Submit, TextField } from 'components/FormField'
 import { useEffect, useState } from 'react'
 
-import OtherOptions from 'components/OtherOptions'
+import MoreOptions from 'components/MoreOptions'
 import Space from '@ui/mui-extends/esm/Space'
 import { Typography } from '@mui/material'
 import typesData from '../data/types'
@@ -100,15 +100,18 @@ const Stress: React.FC<StressProps> = ({ onSubmit }) => {
               error={getIn(errors, 'stressors.memory.workers') ? true : false}
               inputProps={{ min: 0 }}
             />
-            <TextField name="stressors.memory.size" label="Size" helperText="Memory size" />
+            <TextField name="stressors.memory.size" 
+              label="Size" 
+              helperText="Memory size specifies the memory size to be occupied or a percentage of the total memory size" 
+            />
             <LabelField
               name="stressors.memory.options"
               label="Options of Memory stressors"
-              helperText="Type string and end with a space to generate the stress-ng options"
+              helperText="Type string and end with a space to generate the memStress options"
             />
           </Space>
 
-          <OtherOptions>
+          <MoreOptions>
             <TextField
               name="stressngStressors"
               label="Options of stress-ng"
@@ -119,7 +122,7 @@ const Stress: React.FC<StressProps> = ({ onSubmit }) => {
               label="Container Name"
               helperText="Optional. Type string and end with a space to generate the container names. If it's empty, the first container will be injected"
             />
-          </OtherOptions>
+          </MoreOptions>
 
           <Submit />
         </Form>
