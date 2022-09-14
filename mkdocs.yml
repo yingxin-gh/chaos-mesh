@@ -1,0 +1,7 @@
+site_name: chaose-mesh
+
+nav:
+  - Home: index.md
+
+plugins:
+  - techdocs-core
