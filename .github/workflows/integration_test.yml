@@ -28,7 +28,7 @@ jobs:
         uses: azure/setup-helm@v2.1
 
       - name: Setup Kubectl
-        uses: azure/setup-kubectl@v2.0
+        uses: azure/setup-kubectl@v3.0
 
       - name: Magic Kind DNS Fix
         if: ${{ matrix.arch == 'arm64' }}
